@@ -1,0 +1,121 @@
+# Compile
+clang++ -g -O3 toy.cpp `llvm-config --cxxflags --ldflags --system-libs --libs core` -o toy
+# Run
+./toy
+
+///////////
+
+kamma@ZiaX1 MINGW64 ~/SoftDev/proj/kaleidoscope
+$ ./a.exe 
+ready> def foo(x y) x+foo(y, 4.0);
+ready> Parsed a function definition.
+ready> def foo(x y) x+y y;
+ready> Parsed a function definition.
+ready> Parsed a top-level expr.
+ready> def foo(x y) x+y );
+ready> Parsed a function definition.
+ready> Error: Unknown token when expecting an expression
+ready> extern sin(a);
+ready> Parsed an extern.
+ready> ^D
+ready> Error: Unknown token when expecting an expression 
+
+^^^ given the above after the first full build, the only real error I 
+encountered was the end of file not working correctly. It should have closed the 
+terminal then and there
+
+/////////////////////////////
+llvm:
+{
+
+    This gives a nice way to look at the LLVM IR for simple functions. For example:
+
+    ready> 4+5;
+    Read top-level expression:
+    define double @0() 
+    {
+        entry:
+            ret double 9.000000e+00
+    }
+
+    Note how the parser turns the top-level expression into anonymous functions for us. 
+    Also note that the code is very literally transcribed, 
+    no optimizations are being performed except simple constant folding done by IRBuilder. 
+
+    ready> def foo(a b) a*a + 2*a*b + b*b;
+    Read function definition:
+    define double @foo(double %a, double %b) 
+    {
+        entry:
+            %multmp = fmul double %a, %a
+            %multmp1 = fmul double 2.000000e+00, %a
+            %multmp2 = fmul double %multmp1, %b
+            %addtmp = fadd double %multmp, %multmp2
+            %multmp3 = fmul double %b, %b
+            %addtmp4 = fadd double %addtmp, %multmp3
+            ret double %addtmp4
+    }
+
+
+    ready> def bar(a) foo(a, 4.0) + bar(31337);
+    Read function definition:
+    define double @bar(double %a) 
+    {
+        entry:
+            %calltmp = call double @foo(double %a, double 4.000000e+00)
+            %calltmp1 = call double @bar(double 3.133700e+04)
+            %addtmp = fadd double %calltmp, %calltmp1
+            ret double %addtmp
+    }
+    Note that this function will take a long time to execute if you call it.
+
+
+    ready> ^D
+    ; ModuleID = 'my cool jit'
+    .....
+    .....
+    .....
+
+    When you quit the current demo (by sending an CTRL+D on Linux or CTRL+Z and ENTER on Windows), 
+    it dumps out the IR for the entire module generated. 
+    Here you can see the big picture with all the functions referencing each other.
+}
+
+my implementation:
+{
+    ready> ; ModuleID = 'my cool jit'
+    source_filename = "my cool jit"
+
+    define double @foo(double %a, double %b) {
+    entry:
+    %multmp = fmul double %a, %a
+    %multmp1 = fmul double 2.000000e+00, %a
+    %multmp2 = fmul double %multmp1, %b
+    %addtmp = fadd double %multmp, %multmp2
+    %multmp3 = fmul double %b, %b
+    %addtmp4 = fadd double %addtmp, %multmp3
+    ret double %addtmp4
+
+    entry5:                                           ; No predecessors!
+    %multmp6 = fmul double %a, %a
+    %multmp7 = fmul double 2.000000e+00, %a
+    %multmp8 = fmul double %multmp7, %b
+    %addtmp9 = fadd double %multmp6, %multmp8
+    %multmp10 = fmul double %b, %b
+    %addtmp11 = fadd double %addtmp9, %multmp10
+    ret double %addtmp11
+    }
+
+    define double @bar(double %a) {
+    entry:
+    %calltmp = call double @foo(double %a, double 4.000000e+00)
+    %calltmp1 = call double @bar(double 3.133700e+04)
+    %addtmp = fadd double %calltmp, %calltmp1
+    ret double %addtmp
+    }
+    %addtmp11 = fadd double %addtmp9, %multmp10
+    ret double %addtmp11  
+}
+
+LETS GO I MADE AIDS!
+////////////
